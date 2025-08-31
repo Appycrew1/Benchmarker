@@ -98,10 +98,18 @@
 </div>
 
 
-    <div id="watch" class="section">
-      <button id="watchBtn">Check Competitor Watch</button>
-      <pre id="watchOut" style="white-space:pre-wrap"></pre>
+   <div id="watch" class="section">
+  <button id="watchBtn">Check Competitor Watch</button>
+  <div id="watchCard" class="card" style="display:none">
+    <div class="row">
+      <div class="kpi"><b>Latest Price</b><span id="cwLatest">—</span></div>
+      <div class="kpi"><b>Prev. Avg</b><span id="cwPrev">—</span></div>
+      <div class="kpi"><b>Alert</b><span id="cwAlert">—</span></div>
     </div>
+    <canvas id="cwSpark" class="sparkline"></canvas>
+  </div>
+</div>
+
 
     <div id="lead" class="section">
       <div style="margin-bottom:6px">
