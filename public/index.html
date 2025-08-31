@@ -7,6 +7,18 @@
 <title>Moving Benchmark — Choropleth MVP+</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+.card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+.kpi b{display:block;font-size:12px;opacity:.7}
+.kpi span{font-size:20px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #eee;background:#f6f7f9;margin-left:8px}
+.badge.pos{background:#e8f8ee}
+.badge.neg{background:#fff0f0}
+.table{width:100%;border-collapse:separate;border-spacing:0 6px}
+.table th{text-align:left;font-weight:600;font-size:12px;opacity:.7;padding:6px}
+.table td{background:#fff;padding:10px;border:1px solid #eee}
+.sparkline{height:60px}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   #app{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:auto 1fr;height:100vh}
   #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px;border-bottom:1px solid #ddd;align-items:center;flex-wrap:wrap}
