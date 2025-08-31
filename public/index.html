@@ -1,4 +1,3 @@
-\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,39 +6,39 @@
 <title>Moving Benchmark — Choropleth MVP+</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-.card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.row{display:flex;gap:12px;flex-wrap:wrap}
-.kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
-.kpi b{display:block;font-size:12px;opacity:.7}
-.kpi span{font-size:20px}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #eee;background:#f6f7f9;margin-left:8px}
-.badge.pos{background:#e8f8ee}
-.badge.neg{background:#fff0f0}
-.table{width:100%;border-collapse:separate;border-spacing:0 6px}
-.table th{text-align:left;font-weight:600;font-size:12px;opacity:.7;padding:6px}
-.table td{background:#fff;padding:10px;border:1px solid #eee}
-.sparkline{height:60px}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f7f7f8}
   #app{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:auto 1fr;height:100vh}
-  #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px;border-bottom:1px solid #ddd;align-items:center;flex-wrap:wrap}
+  #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid #e5e7eb;align-items:center;flex-wrap:wrap;background:#fff}
   #map{grid-column:1/2;grid-row:2/3}
-  #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #ddd}
+  #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #e5e7eb;background:#fafafa}
   button,select,input{padding:8px;font-size:14px}
   .tabbar{display:flex;gap:8px;margin-bottom:8px}
-  .tabbar button{border:1px solid #ccc;background:#fafafa;cursor:pointer}
-  .tabbar button.active{background:#eaeaea}
+  .tabbar button{border:1px solid #d1d5db;background:#fff;cursor:pointer;border-radius:10px;padding:8px 10px}
+  .tabbar button.active{background:#eef2ff;border-color:#c7d2fe}
   .section{display:none}
   .section.active{display:block}
   .metric{font-size:14px;margin:4px 0}
-  .legend{background:#fff;padding:6px 8px;border:1px solid #ccc;border-radius:8px;line-height:18px;color:#555}
+  .legend{background:#fff;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px;line-height:18px;color:#555}
   .legend i{width:18px;height:18px;float:left;margin-right:8px;opacity:0.8}
+  .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+  .kpi b{display:block;font-size:12px;opacity:.7}
+  .kpi span{font-size:20px}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #eee;background:#f6f7f9;margin-left:8px}
+  .badge.pos{background:#e8f8ee}
+  .badge.neg{background:#fff0f0}
+  .table{width:100%;border-collapse:separate;border-spacing:0 6px}
+  .table th{text-align:left;font-weight:600;font-size:12px;opacity:.7;padding:6px}
+  .table td{background:#fff;padding:10px;border:1px solid #eee}
+  .sparkline{height:60px}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="toolbar">
     <strong>MVP+ (Choropleth)</strong>
-    <span style="opacity:.6">— Benchmark • Forecast • Pricing • Competitor Watch • Lead Score • Marketing</span>
+    <span style="opacity:.7">— Benchmark • Forecast • Pricing • Competitor Watch • Lead Score • Marketing</span>
   </div>
 
   <div id="map"></div>
@@ -59,6 +58,7 @@
       <select id="area"></select>
     </div>
 
+    <!-- Benchmark -->
     <div id="benchmark" class="section active">
       <div style="margin-bottom:6px">
         <label>Your hourly rate (£)</label>
@@ -70,78 +70,81 @@
       </div>
       <button id="compareBtn">Compare</button>
       <h3>Area Metrics</h3>
-      <div id="metrics"></div>
+      <div id="metrics" class="card"></div>
       <h3>You vs. Area</h3>
-      <canvas id="chart" height="180"></canvas>
+      <div class="card"><canvas id="chart" height="180"></canvas></div>
       <h3>Suggested Actions</h3>
-      <ul id="insights"></ul>
+      <ul id="insights" class="card" style="margin-top:8px"></ul>
     </div>
 
+    <!-- Forecast -->
     <div id="forecast" class="section">
       <p>30-day demand forecast for selected area.</p>
-      <canvas id="forecastChart" height="180"></canvas>
+      <div class="card"><canvas id="forecastChart" height="180"></canvas></div>
     </div>
 
+    <!-- Pricing -->
     <div id="pricing" class="section">
-  <button id="pricingBtn">Get Pricing Recommendation</button>
-  <div id="pricingCard" class="card" style="display:none">
-    <div class="row">
-      <div class="kpi"><b>Current Rate</b><span id="kpiCurrent">—</span></div>
-      <div class="kpi"><b>Competitor Avg</b><span id="kpiComp">—</span></div>
-      <div class="kpi"><b>Recommended</b><span id="kpiReco">—</span></div>
-      <div class="kpi"><b>Change</b><span id="kpiChange">—</span>
-        <span id="kpiBadge" class="badge">—</span>
+      <button id="pricingBtn">Get Pricing Recommendation</button>
+      <div id="pricingCard" class="card" style="display:none">
+        <div class="row">
+          <div class="kpi"><b>Current Rate</b><span id="kpiCurrent">—</span></div>
+          <div class="kpi"><b>Competitor Avg</b><span id="kpiComp">—</span></div>
+          <div class="kpi"><b>Recommended</b><span id="kpiReco">—</span></div>
+          <div class="kpi"><b>Change</b><span id="kpiChange">—</span>
+            <span id="kpiBadge" class="badge">—</span>
+          </div>
+        </div>
+        <p id="kpiWhy" style="margin-top:8px;opacity:.8"></p>
       </div>
     </div>
-    <p id="kpiWhy" style="margin-top:8px;opacity:.8"></p>
-  </div>
-</div>
 
-
-   <div id="watch" class="section">
-  <button id="watchBtn">Check Competitor Watch</button>
-  <div id="watchCard" class="card" style="display:none">
-    <div class="row">
-      <div class="kpi"><b>Latest Price</b><span id="cwLatest">—</span></div>
-      <div class="kpi"><b>Prev. Avg</b><span id="cwPrev">—</span></div>
-      <div class="kpi"><b>Alert</b><span id="cwAlert">—</span></div>
+    <!-- Competitor Watch -->
+    <div id="watch" class="section">
+      <button id="watchBtn">Check Competitor Watch</button>
+      <div id="watchCard" class="card" style="display:none">
+        <div class="row">
+          <div class="kpi"><b>Latest Price</b><span id="cwLatest">—</span></div>
+          <div class="kpi"><b>Prev. Avg</b><span id="cwPrev">—</span></div>
+          <div class="kpi"><b>Alert</b><span id="cwAlert">—</span></div>
+        </div>
+        <canvas id="cwSpark" class="sparkline"></canvas>
+      </div>
     </div>
-    <canvas id="cwSpark" class="sparkline"></canvas>
-  </div>
-</div>
 
-
+    <!-- Lead Score -->
     <div id="lead" class="section">
-  <div style="margin-bottom:6px">
-    <label>Estimated job value (£)</label>
-    <input id="jobVal" type="number" value="520"/>
-  </div>
-  <div style="margin-bottom:6px">
-    <label>Your review score (0-5)</label>
-    <input id="leadReview" type="number" step="0.1" value="4.3"/>
-  </div>
-  <button id="leadBtn">Score Lead</button>
-  <div id="leadCard" class="card" style="display:none">
-    <div class="row">
-      <div class="kpi"><b>Lead Score</b><span id="lsScore">—</span></div>
+      <div style="margin-bottom:6px">
+        <label>Estimated job value (£)</label>
+        <input id="jobVal" type="number" value="520"/>
+      </div>
+      <div style="margin-bottom:6px">
+        <label>Your review score (0-5)</label>
+        <input id="leadReview" type="number" step="0.1" value="4.3"/>
+      </div>
+      <button id="leadBtn">Score Lead</button>
+      <div id="leadCard" class="card" style="display:none">
+        <div class="row">
+          <div class="kpi"><b>Lead Score</b><span id="lsScore">—</span></div>
+        </div>
+        <ul id="lsReasons" style="margin-top:8px"></ul>
+      </div>
     </div>
-    <ul id="lsReasons" style="margin-top:8px"></ul>
-  </div>
-</div>
 
-
+    <!-- Marketing -->
     <div id="marketing" class="section">
-  <button id="marketingBtn">Marketing Recommendations</button>
-  <div id="mktCard" class="card" style="display:none">
-    <table class="table" id="mktTable">
-      <thead>
-        <tr><th>Area</th><th>ROI Proxy</th><th>Action</th><th>Note</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+      <button id="marketingBtn">Marketing Recommendations</button>
+      <div id="mktCard" class="card" style="display:none">
+        <table class="table" id="mktTable">
+          <thead>
+            <tr><th>Area</th><th>ROI Proxy</th><th>Action</th><th>Note</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
-
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -171,23 +174,16 @@ function getColor(score){
                       '#FED976';
 }
 function style(feature){
-  return {
-    fillColor: getColor(feature.properties.score),
-    weight: 1,
-    opacity: 1,
-    color: '#555',
-    fillOpacity: 0.7
-  };
+  return { fillColor:getColor(feature.properties.score), weight:1, opacity:1, color:'#555', fillOpacity:0.7 };
 }
 
 let geoLayer, selectedCode=null;
-
 function onEachFeature(feature, layer){
   const p = feature.properties;
   layer.bindTooltip(`${p.area_code} — ${p.name}<br/>Score: ${p.score}`);
   layer.on({
     click: () => { selectedCode = p.area_code; qs('#area').value = p.area_code; refreshPanel(p.area_code); },
-    mouseover: (e) => { const l=e.target; l.setStyle({weight:2,color:'#000'}); },
+    mouseover: (e) => { e.target.setStyle({weight:2,color:'#000'}); },
     mouseout:  (e) => { geoLayer.resetStyle(e.target); }
   });
 }
@@ -218,14 +214,17 @@ async function showMetrics(code){
     `<div class="metric"><b>Close Rate:</b> ${m.close_rate_pct}%</div>`,
     `<div class="metric"><b>On-time:</b> ${m.on_time_pct}%</div>`,
     `<div class="metric"><b>Avg Job Value:</b> £${m.avg_job_value}</div>`,
-    `<div class="metric"><b>Competitor Avg Rate:</b> £${m.competitor_avg_rate}</div>`,
+    `<div class="metric"><b>Competitor Avg Rate:</b> £${m.competitor_avg_rate}</div>`
   ].join("");
 }
 
 let chart;
 function renderChart(yourRate, areaRate, yourRev, areaRev){
   const ctx=qs('#chart'); if(chart) chart.destroy();
-  chart=new Chart(ctx,{type:'bar',data:{labels:['Hourly Rate','Review Score'],datasets:[{label:'You',data:[yourRate||0,yourRev||0]},{label:'Area',data:[areaRate,areaRev]}]},options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+  chart=new Chart(ctx,{type:'bar',data:{labels:['Hourly Rate','Review Score'],
+    datasets:[{label:'You',data:[yourRate||0,yourRev||0]},
+              {label:'Area',data:[areaRate,areaRev]}]},
+    options:{responsive:true,scales:{y:{beginAtZero:true}}}});
 }
 
 let forecastChart;
@@ -234,7 +233,8 @@ async function renderForecast(code){
   const ctx=qs('#forecastChart'); if(forecastChart) forecastChart.destroy();
   const labels = data.points.map(p=>'D'+p.day);
   const values = data.points.map(p=>p.forecast_demand);
-  forecastChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Demand Forecast (30d)',data:values}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:100}}}});
+  forecastChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Demand Forecast (30d)',data:values}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
 }
 
 async function refreshPanel(code){
@@ -244,7 +244,7 @@ async function refreshPanel(code){
   await renderForecast(code);
 }
 
-qs('#compareBtn').onclick=async()=>{
+document.getElementById('compareBtn').onclick=async()=>{
   const code=qs('#area').value;
   const yourRate=parseFloat(qs('#yourRate').value||'0');
   const yourRev=parseFloat(qs('#yourReview').value||'0');
@@ -253,31 +253,72 @@ qs('#compareBtn').onclick=async()=>{
   renderChart(yourRate,b.area_avg.hourly_rate,yourRev,b.area_avg.review_score);
 };
 
-qs('#pricingBtn').onclick=async()=>{
-  const code=qs('#area').value;
-  const data=await fetch('/api/pricing?area_code='+code).then(r=>r.json());
-  qs('#pricingOut').textContent=JSON.stringify(data.pricing, null, 2);
+/* -------- Enhanced UI sections -------- */
+function pctBadge(el, pct){
+  el.textContent = (pct>0?'+':'') + pct.toFixed(1) + '%';
+  el.classList.remove('pos','neg');
+  el.classList.add(pct>=0 ? 'pos' : 'neg');
+}
+
+// Pricing
+document.getElementById('pricingBtn').onclick = async () => {
+  const code = document.getElementById('area').value;
+  const data = await fetch('/api/pricing?area_code='+code).then(r=>r.json());
+  const p = data.pricing;
+  document.getElementById('kpiCurrent').textContent = '£'+p.current_rate;
+  document.getElementById('kpiComp').textContent    = '£'+p.competitor_avg_rate;
+  document.getElementById('kpiReco').textContent    = '£'+p.recommended_rate;
+  document.getElementById('kpiWhy').textContent     = p.rationale;
+  pctBadge(document.getElementById('kpiBadge'), p.change_pct);
+  document.getElementById('kpiChange').textContent  = (p.change_pct>0?'+':'')+p.change_pct+'%';
+  document.getElementById('pricingCard').style.display='block';
 };
 
-qs('#watchBtn').onclick=async()=>{
-  const code=qs('#area').value;
-  const data=await fetch('/api/competitor_watch?area_code='+code).then(r=>r.json());
-  qs('#watchOut').textContent=JSON.stringify(data, null, 2);
+// Competitor Watch
+let cwChart;
+document.getElementById('watchBtn').onclick = async () => {
+  const code = document.getElementById('area').value;
+  const data = await fetch('/api/competitor_watch?area_code='+code).then(r=>r.json());
+  document.getElementById('cwLatest').textContent = '£'+data.latest;
+  document.getElementById('cwPrev').textContent   = '£'+data.prev_avg;
+  document.getElementById('cwAlert').textContent  = data.alert || '—';
+  const ctx = document.getElementById('cwSpark');
+  if(cwChart) cwChart.destroy();
+  cwChart = new Chart(ctx, { type:'line',
+    data:{ labels:data.history.map((_,i)=>'t'+(i+1)), datasets:[{label:'Competitor £', data:data.history, fill:false}] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
+  });
+  document.getElementById('watchCard').style.display='block';
 };
 
-qs('#leadBtn').onclick=async()=>{
-  const code=qs('#area').value;
-  const jobVal=parseFloat(qs('#jobVal').value||'520');
-  const rev=parseFloat(qs('#leadReview').value||'4.3');
-  const data=await fetch(`/api/lead_score?area_code=${code}&est_job_value=${jobVal}&your_review_score=${rev}`).then(r=>r.json());
-  qs('#leadOut').textContent=JSON.stringify(data, null, 2);
+// Lead Score
+document.getElementById('leadBtn').onclick = async () => {
+  const code = document.getElementById('area').value;
+  const jobVal = parseFloat(document.getElementById('jobVal').value||'520');
+  const rev    = parseFloat(document.getElementById('leadReview').value||'4.3');
+  const data = await fetch(`/api/lead_score?area_code=${code}&est_job_value=${jobVal}&your_review_score=${rev}`).then(r=>r.json());
+  document.getElementById('lsScore').textContent = data.lead_score + '/100';
+  document.getElementById('lsReasons').innerHTML = (data.reasons||[]).map(x=>`<li>${x}</li>`).join('');
+  document.getElementById('leadCard').style.display='block';
 };
 
-qs('#marketingBtn').onclick=async()=>{
-  const data=await fetch('/api/marketing').then(r=>r.json());
-  qs('#marketingOut').textContent=JSON.stringify(data.ranking, null, 2);
+// Marketing
+document.getElementById('marketingBtn').onclick = async () => {
+  const data = await fetch('/api/marketing').then(r=>r.json());
+  const tbody = document.querySelector('#mktTable tbody');
+  tbody.innerHTML = '';
+  (data.ranking||[]).forEach(row=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.area_code}</td>
+                    <td>${row.roi_proxy}</td>
+                    <td>${row.suggested_action}</td>
+                    <td>${row.note}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('mktCard').style.display='block';
 };
 
+// Init
 (async function init(){
   await loadGeo();
   const areas = await loadAreas();
@@ -286,9 +327,7 @@ qs('#marketingBtn').onclick=async()=>{
     qs('#area').value = first;
     await refreshPanel(first);
   }
-  qs('#area').addEventListener('change', async (e)=>{
-    await refreshPanel(e.target.value);
-  });
+  qs('#area').addEventListener('change', async (e)=>{ await refreshPanel(e.target.value); });
 
   // Legend
   const legend = L.control({position: 'bottomright'});
