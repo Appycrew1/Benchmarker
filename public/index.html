@@ -83,9 +83,20 @@
     </div>
 
     <div id="pricing" class="section">
-      <button id="pricingBtn">Get Pricing Recommendation</button>
-      <pre id="pricingOut" style="white-space:pre-wrap"></pre>
+  <button id="pricingBtn">Get Pricing Recommendation</button>
+  <div id="pricingCard" class="card" style="display:none">
+    <div class="row">
+      <div class="kpi"><b>Current Rate</b><span id="kpiCurrent">—</span></div>
+      <div class="kpi"><b>Competitor Avg</b><span id="kpiComp">—</span></div>
+      <div class="kpi"><b>Recommended</b><span id="kpiReco">—</span></div>
+      <div class="kpi"><b>Change</b><span id="kpiChange">—</span>
+        <span id="kpiBadge" class="badge">—</span>
+      </div>
     </div>
+    <p id="kpiWhy" style="margin-top:8px;opacity:.8"></p>
+  </div>
+</div>
+
 
     <div id="watch" class="section">
       <button id="watchBtn">Check Competitor Watch</button>
