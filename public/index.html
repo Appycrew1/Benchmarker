@@ -112,24 +112,36 @@
 
 
     <div id="lead" class="section">
-      <div style="margin-bottom:6px">
-        <label>Estimated job value (£)</label>
-        <input id="jobVal" type="number" value="520"/>
-      </div>
-      <div style="margin-bottom:6px">
-        <label>Your review score (0-5)</label>
-        <input id="leadReview" type="number" step="0.1" value="4.3"/>
-      </div>
-      <button id="leadBtn">Score Lead</button>
-      <pre id="leadOut" style="white-space:pre-wrap"></pre>
+  <div style="margin-bottom:6px">
+    <label>Estimated job value (£)</label>
+    <input id="jobVal" type="number" value="520"/>
+  </div>
+  <div style="margin-bottom:6px">
+    <label>Your review score (0-5)</label>
+    <input id="leadReview" type="number" step="0.1" value="4.3"/>
+  </div>
+  <button id="leadBtn">Score Lead</button>
+  <div id="leadCard" class="card" style="display:none">
+    <div class="row">
+      <div class="kpi"><b>Lead Score</b><span id="lsScore">—</span></div>
     </div>
-
-    <div id="marketing" class="section">
-      <button id="marketingBtn">Marketing Recommendations</button>
-      <pre id="marketingOut" style="white-space:pre-wrap"></pre>
-    </div>
+    <ul id="lsReasons" style="margin-top:8px"></ul>
   </div>
 </div>
+
+
+    <div id="marketing" class="section">
+  <button id="marketingBtn">Marketing Recommendations</button>
+  <div id="mktCard" class="card" style="display:none">
+    <table class="table" id="mktTable">
+      <thead>
+        <tr><th>Area</th><th>ROI Proxy</th><th>Action</th><th>Note</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
