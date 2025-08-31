@@ -1,0 +1,268 @@
+\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Moving Benchmark — Choropleth MVP+</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #app{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:auto 1fr;height:100vh}
+  #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px;border-bottom:1px solid #ddd;align-items:center;flex-wrap:wrap}
+  #map{grid-column:1/2;grid-row:2/3}
+  #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #ddd}
+  button,select,input{padding:8px;font-size:14px}
+  .tabbar{display:flex;gap:8px;margin-bottom:8px}
+  .tabbar button{border:1px solid #ccc;background:#fafafa;cursor:pointer}
+  .tabbar button.active{background:#eaeaea}
+  .section{display:none}
+  .section.active{display:block}
+  .metric{font-size:14px;margin:4px 0}
+  .legend{background:#fff;padding:6px 8px;border:1px solid #ccc;border-radius:8px;line-height:18px;color:#555}
+  .legend i{width:18px;height:18px;float:left;margin-right:8px;opacity:0.8}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <strong>MVP+ (Choropleth)</strong>
+    <span style="opacity:.6">— Benchmark • Forecast • Pricing • Competitor Watch • Lead Score • Marketing</span>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="panel">
+    <div class="tabbar">
+      <button data-tab="benchmark" class="active">Benchmark</button>
+      <button data-tab="forecast">Forecast</button>
+      <button data-tab="pricing">Pricing</button>
+      <button data-tab="watch">Competitor Watch</button>
+      <button data-tab="lead">Lead Score</button>
+      <button data-tab="marketing">Marketing</button>
+    </div>
+
+    <div style="margin-bottom:10px">
+      <label>Area</label>
+      <select id="area"></select>
+    </div>
+
+    <div id="benchmark" class="section active">
+      <div style="margin-bottom:6px">
+        <label>Your hourly rate (£)</label>
+        <input id="yourRate" type="number" placeholder="e.g. 110"/>
+      </div>
+      <div style="margin-bottom:6px">
+        <label>Your review score (0-5)</label>
+        <input id="yourReview" type="number" step="0.1" placeholder="e.g. 4.3"/>
+      </div>
+      <button id="compareBtn">Compare</button>
+      <h3>Area Metrics</h3>
+      <div id="metrics"></div>
+      <h3>You vs. Area</h3>
+      <canvas id="chart" height="180"></canvas>
+      <h3>Suggested Actions</h3>
+      <ul id="insights"></ul>
+    </div>
+
+    <div id="forecast" class="section">
+      <p>30-day demand forecast for selected area.</p>
+      <canvas id="forecastChart" height="180"></canvas>
+    </div>
+
+    <div id="pricing" class="section">
+      <button id="pricingBtn">Get Pricing Recommendation</button>
+      <pre id="pricingOut" style="white-space:pre-wrap"></pre>
+    </div>
+
+    <div id="watch" class="section">
+      <button id="watchBtn">Check Competitor Watch</button>
+      <pre id="watchOut" style="white-space:pre-wrap"></pre>
+    </div>
+
+    <div id="lead" class="section">
+      <div style="margin-bottom:6px">
+        <label>Estimated job value (£)</label>
+        <input id="jobVal" type="number" value="520"/>
+      </div>
+      <div style="margin-bottom:6px">
+        <label>Your review score (0-5)</label>
+        <input id="leadReview" type="number" step="0.1" value="4.3"/>
+      </div>
+      <button id="leadBtn">Score Lead</button>
+      <pre id="leadOut" style="white-space:pre-wrap"></pre>
+    </div>
+
+    <div id="marketing" class="section">
+      <button id="marketingBtn">Marketing Recommendations</button>
+      <pre id="marketingOut" style="white-space:pre-wrap"></pre>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+let map=L.map('map').setView([51.509,-0.118],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+
+const qs = (sel)=>document.querySelector(sel);
+const qsa = (sel)=>Array.from(document.querySelectorAll(sel));
+
+function setTab(id){
+  qsa('.section').forEach(s=>s.classList.remove('active'));
+  qsa('.tabbar button').forEach(b=>b.classList.remove('active'));
+  qs('#'+id).classList.add('active');
+  qs(`.tabbar button[data-tab="${id}"]`).classList.add('active');
+}
+qsa('.tabbar button').forEach(btn=>btn.onclick=()=>setTab(btn.dataset.tab));
+
+// Choropleth color scale by "score" (demand - competition)
+function getColor(score){
+  return score > 30 ? '#800026' :
+         score > 20 ? '#BD0026' :
+         score > 10 ? '#E31A1C' :
+         score >  0 ? '#FC4E2A' :
+         score > -10? '#FD8D3C' :
+         score > -20? '#FEB24C' :
+                      '#FED976';
+}
+function style(feature){
+  return {
+    fillColor: getColor(feature.properties.score),
+    weight: 1,
+    opacity: 1,
+    color: '#555',
+    fillOpacity: 0.7
+  };
+}
+
+let geoLayer, selectedCode=null;
+
+function onEachFeature(feature, layer){
+  const p = feature.properties;
+  layer.bindTooltip(`${p.area_code} — ${p.name}<br/>Score: ${p.score}`);
+  layer.on({
+    click: () => { selectedCode = p.area_code; qs('#area').value = p.area_code; refreshPanel(p.area_code); },
+    mouseover: (e) => { const l=e.target; l.setStyle({weight:2,color:'#000'}); },
+    mouseout:  (e) => { geoLayer.resetStyle(e.target); }
+  });
+}
+
+async function loadGeo(){
+  const fc = await fetch('/api/geojson').then(r=>r.json());
+  if(geoLayer) geoLayer.remove();
+  geoLayer = L.geoJSON(fc, {style, onEachFeature}).addTo(map);
+  map.fitBounds(geoLayer.getBounds(), {padding:[20,20]});
+}
+
+async function loadAreas(){
+  const areas = await fetch('/api/areas').then(r=>r.json());
+  const sel = qs('#area'); sel.innerHTML='';
+  areas.forEach(a=>{ const opt=document.createElement('option'); opt.value=a.code; opt.textContent=`${a.code} — ${a.name}`; sel.appendChild(opt); });
+  return areas;
+}
+
+async function showMetrics(code){
+  const m = await fetch('/api/metrics?area_code='+code).then(r=>r.json());
+  const box = qs('#metrics');
+  if(m.error){box.textContent=m.error;return;}
+  box.innerHTML = [
+    `<div class="metric"><b>Demand:</b> ${m.demand_index}</div>`,
+    `<div class="metric"><b>Competition:</b> ${m.competition_index}</div>`,
+    `<div class="metric"><b>Avg Hourly Rate:</b> £${m.avg_hourly_rate}</div>`,
+    `<div class="metric"><b>Avg Review Score:</b> ${m.avg_review_score}★</div>`,
+    `<div class="metric"><b>Close Rate:</b> ${m.close_rate_pct}%</div>`,
+    `<div class="metric"><b>On-time:</b> ${m.on_time_pct}%</div>`,
+    `<div class="metric"><b>Avg Job Value:</b> £${m.avg_job_value}</div>`,
+    `<div class="metric"><b>Competitor Avg Rate:</b> £${m.competitor_avg_rate}</div>`,
+  ].join("");
+}
+
+let chart;
+function renderChart(yourRate, areaRate, yourRev, areaRev){
+  const ctx=qs('#chart'); if(chart) chart.destroy();
+  chart=new Chart(ctx,{type:'bar',data:{labels:['Hourly Rate','Review Score'],datasets:[{label:'You',data:[yourRate||0,yourRev||0]},{label:'Area',data:[areaRate,areaRev]}]},options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+}
+
+let forecastChart;
+async function renderForecast(code){
+  const data = await fetch(`/api/forecast?area_code=${code}&horizon_days=30`).then(r=>r.json());
+  const ctx=qs('#forecastChart'); if(forecastChart) forecastChart.destroy();
+  const labels = data.points.map(p=>'D'+p.day);
+  const values = data.points.map(p=>p.forecast_demand);
+  forecastChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Demand Forecast (30d)',data:values}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:100}}}});
+}
+
+async function refreshPanel(code){
+  await showMetrics(code);
+  const ins=await fetch('/api/insights?area_code='+code).then(r=>r.json());
+  qs('#insights').innerHTML=(ins.insights||[]).map(x=>'<li>'+x+'</li>').join('');
+  await renderForecast(code);
+}
+
+qs('#compareBtn').onclick=async()=>{
+  const code=qs('#area').value;
+  const yourRate=parseFloat(qs('#yourRate').value||'0');
+  const yourRev=parseFloat(qs('#yourReview').value||'0');
+  const b=await fetch(`/api/benchmark?area_code=${code}&your_hourly_rate=${yourRate}&your_review_score=${yourRev}`).then(r=>r.json());
+  await refreshPanel(code);
+  renderChart(yourRate,b.area_avg.hourly_rate,yourRev,b.area_avg.review_score);
+};
+
+qs('#pricingBtn').onclick=async()=>{
+  const code=qs('#area').value;
+  const data=await fetch('/api/pricing?area_code='+code).then(r=>r.json());
+  qs('#pricingOut').textContent=JSON.stringify(data.pricing, null, 2);
+};
+
+qs('#watchBtn').onclick=async()=>{
+  const code=qs('#area').value;
+  const data=await fetch('/api/competitor_watch?area_code='+code).then(r=>r.json());
+  qs('#watchOut').textContent=JSON.stringify(data, null, 2);
+};
+
+qs('#leadBtn').onclick=async()=>{
+  const code=qs('#area').value;
+  const jobVal=parseFloat(qs('#jobVal').value||'520');
+  const rev=parseFloat(qs('#leadReview').value||'4.3');
+  const data=await fetch(`/api/lead_score?area_code=${code}&est_job_value=${jobVal}&your_review_score=${rev}`).then(r=>r.json());
+  qs('#leadOut').textContent=JSON.stringify(data, null, 2);
+};
+
+qs('#marketingBtn').onclick=async()=>{
+  const data=await fetch('/api/marketing').then(r=>r.json());
+  qs('#marketingOut').textContent=JSON.stringify(data.ranking, null, 2);
+};
+
+(async function init(){
+  await loadGeo();
+  const areas = await loadAreas();
+  const first = areas[0]?.code;
+  if(first){
+    qs('#area').value = first;
+    await refreshPanel(first);
+  }
+  qs('#area').addEventListener('change', async (e)=>{
+    await refreshPanel(e.target.value);
+  });
+
+  // Legend
+  const legend = L.control({position: 'bottomright'});
+  legend.onAdd = function (map) {
+    const div = L.DomUtil.create('div','legend');
+    const grades = [-20,-10,0,10,20,30];
+    div.innerHTML += '<b>Demand - Competition</b><br>';
+    for (let i=0; i<grades.length; i++){
+      const from = grades[i];
+      const to = grades[i+1];
+      const color = (from===-20) ? getColor(-20.1) : getColor(from+0.1);
+      div.innerHTML += '<i style="background:'+color+'"></i> ' + from + (to ? '&ndash;'+to+'<br>' : '+');
+    }
+    return div;
+  };
+  legend.addTo(map);
+})();
+</script>
+</body>
+</html>
