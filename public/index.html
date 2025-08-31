@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Moving Benchmark + Heatmap — MVP</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    #app{display:flex;height:100vh}
+    #map{flex:2}
+    #panel{flex:1;padding:14px;overflow:auto;border-left:1px solid #ddd}
+    label{display:block;margin:8px 0 4px}
+    input,select,button{padding:8px;font-size:14px;width:100%}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="panel">
+    <h2>Benchmarking</h2>
+    <label>Area</label>
+    <select id="area"></select>
+    <label>Your hourly rate (£)</label>
+    <input id="yourRate" type="number" placeholder="e.g. 110"/>
+    <label>Your review score (0-5)</label>
+    <input id="yourReview" type="number" step="0.1" placeholder="e.g. 4.3"/>
+    <button id="compareBtn">Compare</button>
+    <h3>Area Metrics</h3>
+    <div id="metrics"></div>
+    <h3>You vs. Area</h3>
+    <canvas id="chart" height="180"></canvas>
+    <h3>Suggested Actions</h3>
+    <ul id="insights"></ul>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+let map=L.map('map').setView([51.509,-0.118],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+let heatLayer;let markers=[];
+async function loadAreas(){
+  const areas=await fetch('/api/areas').then(r=>r.json());
+  const sel=document.getElementById('area'); sel.innerHTML='';
+  areas.forEach(a=>{const opt=document.createElement('option');opt.value=a.code;opt.textContent=a.code+' — '+a.name;sel.appendChild(opt);
+    const m=L.circleMarker([a.lat,a.lng],{radius:6}).addTo(map); m.bindTooltip(a.code+' — '+a.name); markers.push(m);
+  });
+}
+async function loadHeat(){
+  const pts=await fetch('/api/heatmap').then(r=>r.json());
+  if(heatLayer) heatLayer.remove(); heatLayer=L.heatLayer(pts,{radius:25,blur:15}).addTo(map);
+}
+async function showMetrics(code){
+  const m=await fetch('/api/metrics?area_code='+code).then(r=>r.json());
+  const box=document.getElementById('metrics');
+  if(m.error){box.textContent=m.error;return;}
+  box.innerHTML=[
+    '<div><b>Demand:</b> '+m.demand_index+'</div>',
+    '<div><b>Competition:</b> '+m.competition_index+'</div>',
+    '<div><b>Avg Hourly Rate:</b> £'+m.avg_hourly_rate+'</div>',
+    '<div><b>Avg Review Score:</b> '+m.avg_review_score+'★</div>',
+    '<div><b>Close Rate:</b> '+m.close_rate_pct+'%</div>',
+    '<div><b>On-time:</b> '+m.on_time_pct+'%</div>',
+    '<div><b>Avg Job Value:</b> £'+m.avg_job_value+'</div>',
+  ].join('');
+}
+let chart;
+function renderChart(yourRate, areaRate, yourRev, areaRev){
+  const ctx=document.getElementById('chart');
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{type:'bar',data:{labels:['Hourly Rate','Review Score'],datasets:[{label:'You',data:[yourRate||0,yourRev||0]},{label:'Area',data:[areaRate,areaRev]}]},options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+}
+async function loadInsights(code){
+  const data=await fetch('/api/insights?area_code='+code).then(r=>r.json());
+  document.getElementById('insights').innerHTML=(data.insights||[]).map(x=>'<li>'+x+'</li>').join('');
+}
+document.getElementById('compareBtn').onclick=async()=>{
+  const code=document.getElementById('area').value;
+  const yourRate=parseFloat(document.getElementById('yourRate').value||'0');
+  const yourRev=parseFloat(document.getElementById('yourReview').value||'0');
+  const b=await fetch(`/api/benchmark?area_code=${code}&your_hourly_rate=${yourRate}&your_review_score=${yourRev}`).then(r=>r.json());
+  await showMetrics(code); await loadInsights(code);
+  renderChart(yourRate,b.area_avg.hourly_rate,yourRev,b.area_avg.review_score);
+};
+(async function init(){await loadAreas(); await loadHeat(); const first=document.getElementById('area').value; if(first){ await showMetrics(first); await loadInsights(first);} })();
+</script>
+</body>
+</html>
