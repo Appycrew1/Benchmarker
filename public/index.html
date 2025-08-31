@@ -1,18 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ultra-Min MVP</title>
-</head>
-<body>
-  <h1>Ultra-Min MVP</h1>
-  <p>Click to test API:</p>
-  <ul>
-    <li><a href="/api/areas" target="_blank">/api/areas</a></li>
-    <li><a href="/api/metrics?area_code=SW11" target="_blank">/api/metrics?area_code=SW11</a></li>
-    <li><a href="/api/heatmap" target="_blank">/api/heatmap</a></li>
-  </ul>
-  <p>If any are blank or 404/500, the deployment is misconfigured (root, files, or deps).</p>
-</body>
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MVP Check</title></head>
+  <body style="font-family:system-ui;padding:16px">
+    <h1>MVP Check</h1>
+    <p>These links must return JSON (open each in a new tab):</p>
+    <ul>
+      <li><a href="/api/ping" target="_blank">/api/ping</a></li>
+      <li><a href="/api/areas" target="_blank">/api/areas</a></li>
+      <li><a href="/api/metrics?area_code=SW11" target="_blank">/api/metrics?area_code=SW11</a></li>
+      <li><a href="/api/heatmap" target="_blank">/api/heatmap</a></li>
+    </ul>
+    <p>If any are 404/500, it’s a routing/build issue (see checklist below).</p>
+  </body>
 </html>
