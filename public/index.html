@@ -32,6 +32,7 @@
   .table th{text-align:left;font-weight:600;font-size:12px;opacity:.7;padding:6px}
   .table td{background:#fff;padding:10px;border:1px solid #eee}
   .sparkline{height:60px}
+  .error{background:#fff5f5;border:1px solid #fecaca;color:#991b1b;padding:8px;border-radius:8px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -71,6 +72,7 @@
       <button id="compareBtn">Compare</button>
       <h3>Area Metrics</h3>
       <div id="metrics" class="card"></div>
+      <div id="metricsErr" class="error" style="display:none"></div>
       <h3>You vs. Area</h3>
       <div class="card"><canvas id="chart" height="180"></canvas></div>
       <h3>Suggested Actions</h3>
@@ -81,6 +83,7 @@
     <div id="forecast" class="section">
       <p>30-day demand forecast for selected area.</p>
       <div class="card"><canvas id="forecastChart" height="180"></canvas></div>
+      <div id="forecastErr" class="error" style="display:none"></div>
     </div>
 
     <!-- Pricing -->
@@ -97,6 +100,7 @@
         </div>
         <p id="kpiWhy" style="margin-top:8px;opacity:.8"></p>
       </div>
+      <div id="pricingErr" class="error" style="display:none"></div>
     </div>
 
     <!-- Competitor Watch -->
@@ -110,6 +114,7 @@
         </div>
         <canvas id="cwSpark" class="sparkline"></canvas>
       </div>
+      <div id="watchErr" class="error" style="display:none"></div>
     </div>
 
     <!-- Lead Score -->
@@ -129,6 +134,7 @@
         </div>
         <ul id="lsReasons" style="margin-top:8px"></ul>
       </div>
+      <div id="leadErr" class="error" style="display:none"></div>
     </div>
 
     <!-- Marketing -->
@@ -142,6 +148,7 @@
           <tbody></tbody>
         </table>
       </div>
+      <div id="mktErr" class="error" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -160,10 +167,30 @@ function setTab(id){
   qsa('.tabbar button').forEach(b=>b.classList.remove('active'));
   qs('#'+id).classList.add('active');
   qs(`.tabbar button[data-tab="${id}"]`).classList.add('active');
+  // auto-run when tab becomes active
+  if(id==='pricing') runPricing();
+  if(id==='watch') runWatch();
+  if(id==='lead') runLead();
+  if(id==='marketing') runMarketing();
 }
 qsa('.tabbar button').forEach(btn=>btn.onclick=()=>setTab(btn.dataset.tab));
 
-// Choropleth color scale by "score" (demand - competition)
+/* ---------- helpers ---------- */
+async function fetchJSON(url){
+  const res = await fetch(url);
+  if(!res.ok){ throw new Error(`${res.status} ${res.statusText}`); }
+  return res.json();
+}
+function showErr(id, msg){
+  const el = qs(id); if(!el) return;
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideErr(id){
+  const el = qs(id); if(!el) return;
+  el.style.display = 'none'; el.textContent = '';
+}
+
+/* ---------- choropleth ---------- */
 function getColor(score){
   return score > 30 ? '#800026' :
          score > 20 ? '#BD0026' :
@@ -189,33 +216,42 @@ function onEachFeature(feature, layer){
 }
 
 async function loadGeo(){
-  const fc = await fetch('/api/geojson').then(r=>r.json());
-  if(geoLayer) geoLayer.remove();
-  geoLayer = L.geoJSON(fc, {style, onEachFeature}).addTo(map);
-  map.fitBounds(geoLayer.getBounds(), {padding:[20,20]});
+  try{
+    const fc = await fetchJSON('/api/geojson');
+    if(geoLayer) geoLayer.remove();
+    geoLayer = L.geoJSON(fc, {style, onEachFeature}).addTo(map);
+    map.fitBounds(geoLayer.getBounds(), {padding:[20,20]});
+  }catch(e){
+    console.error(e);
+  }
 }
 
 async function loadAreas(){
-  const areas = await fetch('/api/areas').then(r=>r.json());
+  const areas = await fetchJSON('/api/areas');
   const sel = qs('#area'); sel.innerHTML='';
   areas.forEach(a=>{ const opt=document.createElement('option'); opt.value=a.code; opt.textContent=`${a.code} — ${a.name}`; sel.appendChild(opt); });
   return areas;
 }
 
 async function showMetrics(code){
-  const m = await fetch('/api/metrics?area_code='+code).then(r=>r.json());
-  const box = qs('#metrics');
-  if(m.error){box.textContent=m.error;return;}
-  box.innerHTML = [
-    `<div class="metric"><b>Demand:</b> ${m.demand_index}</div>`,
-    `<div class="metric"><b>Competition:</b> ${m.competition_index}</div>`,
-    `<div class="metric"><b>Avg Hourly Rate:</b> £${m.avg_hourly_rate}</div>`,
-    `<div class="metric"><b>Avg Review Score:</b> ${m.avg_review_score}★</div>`,
-    `<div class="metric"><b>Close Rate:</b> ${m.close_rate_pct}%</div>`,
-    `<div class="metric"><b>On-time:</b> ${m.on_time_pct}%</div>`,
-    `<div class="metric"><b>Avg Job Value:</b> £${m.avg_job_value}</div>`,
-    `<div class="metric"><b>Competitor Avg Rate:</b> £${m.competitor_avg_rate}</div>`
-  ].join("");
+  try{
+    hideErr('#metricsErr');
+    const m = await fetchJSON('/api/metrics?area_code='+code);
+    const box = qs('#metrics');
+    if(m.error){box.textContent=m.error;return;}
+    box.innerHTML = [
+      `<div class="metric"><b>Demand:</b> ${m.demand_index}</div>`,
+      `<div class="metric"><b>Competition:</b> ${m.competition_index}</div>`,
+      `<div class="metric"><b>Avg Hourly Rate:</b> £${m.avg_hourly_rate}</div>`,
+      `<div class="metric"><b>Avg Review Score:</b> ${m.avg_review_score}★</div>`,
+      `<div class="metric"><b>Close Rate:</b> ${m.close_rate_pct}%</div>`,
+      `<div class="metric"><b>On-time:</b> ${m.on_time_pct}%</div>`,
+      `<div class="metric"><b>Avg Job Value:</b> £${m.avg_job_value}</div>`,
+      `<div class="metric"><b>Competitor Avg Rate:</b> £${m.competitor_avg_rate}</div>`
+    ].join("");
+  }catch(e){
+    showErr('#metricsErr', `Metrics failed: ${e.message}`);
+  }
 }
 
 let chart;
@@ -224,101 +260,126 @@ function renderChart(yourRate, areaRate, yourRev, areaRev){
   chart=new Chart(ctx,{type:'bar',data:{labels:['Hourly Rate','Review Score'],
     datasets:[{label:'You',data:[yourRate||0,yourRev||0]},
               {label:'Area',data:[areaRate,areaRev]}]},
-    options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 }
 
 let forecastChart;
 async function renderForecast(code){
-  const data = await fetch(`/api/forecast?area_code=${code}&horizon_days=30`).then(r=>r.json());
-  const ctx=qs('#forecastChart'); if(forecastChart) forecastChart.destroy();
-  const labels = data.points.map(p=>'D'+p.day);
-  const values = data.points.map(p=>p.forecast_demand);
-  forecastChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Demand Forecast (30d)',data:values}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+  try{
+    hideErr('#forecastErr');
+    const data = await fetchJSON(`/api/forecast?area_code=${code}&horizon_days=30`);
+    const ctx=qs('#forecastChart'); if(forecastChart) forecastChart.destroy();
+    const labels = data.points.map(p=>'D'+p.day);
+    const values = data.points.map(p=>p.forecast_demand);
+    forecastChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Demand Forecast (30d)',data:values}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+  }catch(e){
+    showErr('#forecastErr', `Forecast failed: ${e.message}`);
+  }
 }
 
 async function refreshPanel(code){
   await showMetrics(code);
-  const ins=await fetch('/api/insights?area_code='+code).then(r=>r.json());
+  const ins = await fetchJSON('/api/insights?area_code='+code).catch(()=>({insights:[]}));
   qs('#insights').innerHTML=(ins.insights||[]).map(x=>'<li>'+x+'</li>').join('');
   await renderForecast(code);
 }
 
-document.getElementById('compareBtn').onclick=async()=>{
-  const code=qs('#area').value;
-  const yourRate=parseFloat(qs('#yourRate').value||'0');
-  const yourRev=parseFloat(qs('#yourReview').value||'0');
-  const b=await fetch(`/api/benchmark?area_code=${code}&your_hourly_rate=${yourRate}&your_review_score=${yourRev}`).then(r=>r.json());
-  await refreshPanel(code);
-  renderChart(yourRate,b.area_avg.hourly_rate,yourRev,b.area_avg.review_score);
-};
-
-/* -------- Enhanced UI sections -------- */
+/* ---------- enhanced panels (auto-run + buttons) ---------- */
 function pctBadge(el, pct){
   el.textContent = (pct>0?'+':'') + pct.toFixed(1) + '%';
   el.classList.remove('pos','neg');
   el.classList.add(pct>=0 ? 'pos' : 'neg');
 }
 
-// Pricing
-document.getElementById('pricingBtn').onclick = async () => {
-  const code = document.getElementById('area').value;
-  const data = await fetch('/api/pricing?area_code='+code).then(r=>r.json());
-  const p = data.pricing;
-  document.getElementById('kpiCurrent').textContent = '£'+p.current_rate;
-  document.getElementById('kpiComp').textContent    = '£'+p.competitor_avg_rate;
-  document.getElementById('kpiReco').textContent    = '£'+p.recommended_rate;
-  document.getElementById('kpiWhy').textContent     = p.rationale;
-  pctBadge(document.getElementById('kpiBadge'), p.change_pct);
-  document.getElementById('kpiChange').textContent  = (p.change_pct>0?'+':'')+p.change_pct+'%';
-  document.getElementById('pricingCard').style.display='block';
-};
+async function runPricing(){
+  try{
+    hideErr('#pricingErr');
+    const code = qs('#area').value;
+    const data = await fetchJSON('/api/pricing?area_code='+code);
+    const p = data.pricing;
+    qs('#kpiCurrent').textContent = '£'+p.current_rate;
+    qs('#kpiComp').textContent    = '£'+p.competitor_avg_rate;
+    qs('#kpiReco').textContent    = '£'+p.recommended_rate;
+    qs('#kpiWhy').textContent     = p.rationale;
+    pctBadge(qs('#kpiBadge'), p.change_pct);
+    qs('#kpiChange').textContent  = (p.change_pct>0?'+':'')+p.change_pct+'%';
+    qs('#pricingCard').style.display='block';
+  }catch(e){
+    showErr('#pricingErr', `Pricing failed: ${e.message}`);
+  }
+}
+document.getElementById('pricingBtn').onclick = runPricing;
 
-// Competitor Watch
 let cwChart;
-document.getElementById('watchBtn').onclick = async () => {
-  const code = document.getElementById('area').value;
-  const data = await fetch('/api/competitor_watch?area_code='+code).then(r=>r.json());
-  document.getElementById('cwLatest').textContent = '£'+data.latest;
-  document.getElementById('cwPrev').textContent   = '£'+data.prev_avg;
-  document.getElementById('cwAlert').textContent  = data.alert || '—';
-  const ctx = document.getElementById('cwSpark');
-  if(cwChart) cwChart.destroy();
-  cwChart = new Chart(ctx, { type:'line',
-    data:{ labels:data.history.map((_,i)=>'t'+(i+1)), datasets:[{label:'Competitor £', data:data.history, fill:false}] },
-    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
-  });
-  document.getElementById('watchCard').style.display='block';
+async function runWatch(){
+  try{
+    hideErr('#watchErr');
+    const code = qs('#area').value;
+    const data = await fetchJSON('/api/competitor_watch?area_code='+code);
+    qs('#cwLatest').textContent = '£'+data.latest;
+    qs('#cwPrev').textContent   = '£'+data.prev_avg;
+    qs('#cwAlert').textContent  = data.alert || '—';
+    const ctx = qs('#cwSpark');
+    if(cwChart) cwChart.destroy();
+    cwChart = new Chart(ctx, { type:'line',
+      data:{ labels:data.history.map((_,i)=>'t'+(i+1)), datasets:[{label:'Competitor £', data:data.history, fill:false}] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
+    });
+    qs('#watchCard').style.display='block';
+  }catch(e){
+    showErr('#watchErr', `Competitor watch failed: ${e.message}`);
+  }
+}
+document.getElementById('watchBtn').onclick = runWatch;
+
+async function runLead(){
+  try{
+    hideErr('#leadErr');
+    const code = qs('#area').value;
+    const jobVal = parseFloat(qs('#jobVal').value||'520');
+    const rev    = parseFloat(qs('#leadReview').value||'4.3');
+    const data = await fetchJSON(`/api/lead_score?area_code=${code}&est_job_value=${jobVal}&your_review_score=${rev}`);
+    qs('#lsScore').textContent = data.lead_score + '/100';
+    qs('#lsReasons').innerHTML = (data.reasons||[]).map(x=>`<li>${x}</li>`).join('');
+    qs('#leadCard').style.display='block';
+  }catch(e){
+    showErr('#leadErr', `Lead score failed: ${e.message}`);
+  }
+}
+document.getElementById('leadBtn').onclick = runLead;
+
+async function runMarketing(){
+  try{
+    hideErr('#mktErr');
+    const data = await fetchJSON('/api/marketing');
+    const tbody = document.querySelector('#mktTable tbody');
+    tbody.innerHTML = '';
+    (data.ranking||[]).forEach(row=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${row.area_code}</td>
+                      <td>${row.roi_proxy}</td>
+                      <td>${row.suggested_action}</td>
+                      <td>${row.note}</td>`;
+      tbody.appendChild(tr);
+    });
+    qs('#mktCard').style.display='block';
+  }catch(e){
+    showErr('#mktErr', `Marketing failed: ${e.message}`);
+  }
+}
+document.getElementById('marketingBtn').onclick = runMarketing;
+
+/* ---------- init ---------- */
+document.getElementById('compareBtn').onclick = async ()=>{
+  const code=qs('#area').value;
+  const yourRate=parseFloat(qs('#yourRate').value||'0');
+  const yourRev=parseFloat(qs('#yourReview').value||'0');
+  const b=await fetchJSON(`/api/benchmark?area_code=${code}&your_hourly_rate=${yourRate}&your_review_score=${yourRev}`).catch(()=>null);
+  await refreshPanel(code);
+  if(b) renderChart(yourRate,b.area_avg.hourly_rate,yourRev,b.area_avg.review_score);
 };
 
-// Lead Score
-document.getElementById('leadBtn').onclick = async () => {
-  const code = document.getElementById('area').value;
-  const jobVal = parseFloat(document.getElementById('jobVal').value||'520');
-  const rev    = parseFloat(document.getElementById('leadReview').value||'4.3');
-  const data = await fetch(`/api/lead_score?area_code=${code}&est_job_value=${jobVal}&your_review_score=${rev}`).then(r=>r.json());
-  document.getElementById('lsScore').textContent = data.lead_score + '/100';
-  document.getElementById('lsReasons').innerHTML = (data.reasons||[]).map(x=>`<li>${x}</li>`).join('');
-  document.getElementById('leadCard').style.display='block';
-};
-
-// Marketing
-document.getElementById('marketingBtn').onclick = async () => {
-  const data = await fetch('/api/marketing').then(r=>r.json());
-  const tbody = document.querySelector('#mktTable tbody');
-  tbody.innerHTML = '';
-  (data.ranking||[]).forEach(row=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${row.area_code}</td>
-                    <td>${row.roi_proxy}</td>
-                    <td>${row.suggested_action}</td>
-                    <td>${row.note}</td>`;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('mktCard').style.display='block';
-};
-
-// Init
 (async function init(){
   await loadGeo();
   const areas = await loadAreas();
@@ -326,10 +387,21 @@ document.getElementById('marketingBtn').onclick = async () => {
   if(first){
     qs('#area').value = first;
     await refreshPanel(first);
+    // auto-run the four panels so you see results immediately
+    runPricing();
+    runWatch();
+    runLead();
+    runMarketing();
   }
-  qs('#area').addEventListener('change', async (e)=>{ await refreshPanel(e.target.value); });
+  qs('#area').addEventListener('change', async (e)=>{
+    await refreshPanel(e.target.value);
+    runPricing();
+    runWatch();
+    runLead();
+    runMarketing();
+  });
 
-  // Legend
+  // legend
   const legend = L.control({position: 'bottomright'});
   legend.onAdd = function (map) {
     const div = L.DomUtil.create('div','legend');
